@@ -1,0 +1,139 @@
+# by Jim Knoble <jmknoble@jmknoble.cx>
+# Copyright (C) 1998,1999,2000 Jim Knoble
+#
+# Disclaimer:
+#
+# THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# express or implied, including but not limited to the warranties of
+# merchantability, fitness for a particular purpose and
+# noninfringement. In no event shall the author(s) be liable for any
+# claim, damages or other liability, whether in an action of
+# contract, tort or otherwise, arising from, out of or in connection
+# with the software or the use or other dealings in the software.
+#
+# Permission to use, copy, modify, distribute, and sell this software
+# and its documentation for any purpose is hereby granted without
+# fee, provided that the above copyright notice appear in all copies
+# and that both that copyright notice and this permission notice
+# appear in supporting documentation.
+
+# User-Defined Macros:
+# %%define <name> <expansion>
+%define Name		hostinfo
+%define Version		2.2
+%define Release		1
+%define Prefix		/usr
+Summary: Utility for looking up hostnames and IP addresses
+Name: %{Name}
+Version: %{Version}
+Release: %{Release}
+#Epoch: 
+Copyright: BSD-ish
+Group: Applications/Network
+#URL: 
+Source0: %{Name}-%{Version}.tar.gz
+#Patch0: 
+Prefix: %{Prefix}
+BuildRoot: /tmp/%{Name}-%{Version}-%{Release}-root
+#Provides: 
+#Requires: 
+#Obsoletes: 
+
+%description
+'hostinfo' is a utility for looking up hostnames and IP addresses.  It
+is a simple wrapper around gethostbyname(3) and gethostbyaddr(3); thus,
+it uses a combination of the local system's "host database" ('/etc/hosts'
+and/or NIS/NIS+) and the DNS resolver.  (Exactly what combination, and
+in what order, depends on the the local system's configuration).
+
+%prep
+%setup
+
+#%patch0 -b .orig
+
+#function Replace() {
+#  local fil="$1"
+#  local sep="$2"
+#  local old="$3"
+#  local new="$4"
+#  local suf="$5"
+#  [ -z "${suf}" ] && suf='~'
+#  mv -f ${fil} ${fil}${suf}
+#  cat ${fil}${suf} | sed -e "s${sep}${old}${sep}${new}${sep}g" >$fil
+#}
+
+%build
+if [ -z "${CC}" ]; then
+  if [ -n "`which gcc`" ]; then
+    CC="gcc"
+  else
+    CC="cc"
+  fi
+fi
+export CC
+
+make CC="${CC}" OPTFLAGS="${RPM_OPT_FLAGS}"
+
+%install
+function CheckBuildRoot() {
+  # do a few sanity checks on the BuildRoot
+  # to make sure we don't damage a system
+  case "${RPM_BUILD_ROOT}" in
+    ''|' '|/|/bin|/boot|/dev|/etc|/home|/lib|/mnt|/root|/sbin|/tmp|/usr|/var)
+      echo "Yikes!  Don't use '${RPM_BUILD_ROOT}' for a BuildRoot!"
+      echo "The BuildRoot gets deleted when this package is rebuilt;"
+      echo "something like '/tmp/build-blah' is a better choice."
+      return 1
+    ;;
+    *) return 0
+    ;;
+  esac
+}
+function CleanBuildRoot() {
+  if CheckBuildRoot; then
+    rm -rf "${RPM_BUILD_ROOT}"
+  else
+    exit 1
+  fi
+}
+CleanBuildRoot
+
+for i in \
+  "" \
+  %{Prefix} \
+; do
+  mkdir -p "${RPM_BUILD_ROOT}${i}"
+done
+
+make install \
+  DESTDIR="${RPM_BUILD_ROOT}" \
+  prefix="%{Prefix}"
+
+%clean
+function CheckBuildRoot() {
+  # do a few sanity checks on the BuildRoot
+  # to make sure we don't damage a system
+  case "${RPM_BUILD_ROOT}" in
+    ''|' '|/|/bin|/boot|/dev|/etc|/home|/lib|/mnt|/root|/sbin|/tmp|/usr|/var)
+      echo "Yikes!  Don't use '${RPM_BUILD_ROOT}' for a BuildRoot!"
+      echo "The BuildRoot gets deleted when this package is rebuilt;"
+      echo "something like '/tmp/build-blah' is a better choice."
+      return 1
+    ;;
+    *) return 0
+    ;;
+  esac
+}
+function CleanBuildRoot() {
+  if CheckBuildRoot; then
+    rm -rf "${RPM_BUILD_ROOT}"
+  else
+    exit 1
+  fi
+}
+CleanBuildRoot
+
+%files
+%attr(-   ,root,root) %doc ChangeLog
+%attr(0755,root,root) %{Prefix}/bin/hostinfo
+
